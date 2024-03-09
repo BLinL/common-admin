@@ -25,10 +25,6 @@ class UserServiceTest {
         userDTO.setPassword("123");
 
         Method[] declaredMethods = userService.getClass().getDeclaredMethods();
-        for (Method declaredMethod : declaredMethods) {
-            System.out.println(declaredMethod.getName());
-        }
-
         ResultVO<UserDTO> user = userService.createNewUser(userDTO);
         assertEquals(user.getCode(), 0);
     }

@@ -14,7 +14,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
@@ -31,6 +33,10 @@ public class SecurityConfig {
     @Autowired
     @Qualifier("delegatedAuthenticationEntryPoint")
     AuthenticationEntryPoint authenticationEntryPoint;
+
+    @Autowired
+    @Qualifier("myUserDetailService")
+    MyUserDetailService myUserDetailService;
 
     /**
      * 定义比较密码的加密方式
@@ -49,14 +55,6 @@ public class SecurityConfig {
     public UserDetailsService userDetailsService() {
         InMemoryUserDetailsManager userDetailsManager = new InMemoryUserDetailsManager();
         userDetailsManager.createUser(User.withUsername("张三").password("{bcrypt}$2a$10$UZN8DBdO45QXljuLTTCGVucvsUxpD7TOYCHcM3z7CCnm1F4nXJAJC").roles("user").build());
-        return userDetailsManager;
-    }
-
-    @Bean
-    @Order(1)
-    public UserDetailsService userDetailsService1() {
-        InMemoryUserDetailsManager userDetailsManager = new InMemoryUserDetailsManager();
-        userDetailsManager.createUser(User.withUsername("张三1").password("{bcrypt}$2a$10$UZN8DBdO45QXljuLTTCGVucvsUxpD7TOYCHcM3z7CCnm1F4nXJAJC").roles("user").build());
         return userDetailsManager;
     }
 
@@ -81,7 +79,7 @@ public class SecurityConfig {
 
         // 多数据源
         DaoAuthenticationProvider daoAuthenticationProvider1 = new DaoAuthenticationProvider();
-        daoAuthenticationProvider1.setUserDetailsService(userDetailsService1());
+        daoAuthenticationProvider1.setUserDetailsService(myUserDetailService);
         ProviderManager pm = new ProviderManager(daoAuthenticationProvider, daoAuthenticationProvider1);
         return pm;
     }
