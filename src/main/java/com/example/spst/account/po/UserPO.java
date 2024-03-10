@@ -1,9 +1,9 @@
 package com.example.spst.account.po;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
+
+import java.util.Date;
 
 @Data
 @TableName("sys_user")
@@ -14,4 +14,9 @@ public class UserPO {
     private String username;
     private String email;
     private String password;
+    private String createBy;
+    @TableField(fill = FieldFill.INSERT)
+    private Date insertTime;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private Date updateTime;
 }
