@@ -1,6 +1,6 @@
 package com.example.spst.account.dao;
 
-import com.example.spst.account.po.UserPO;
+import com.example.spst.account.entity.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,25 +16,25 @@ class UserMapperTest {
 
     @Test
     public void smoke_test() {
-        UserPO userPO = userMapper.selectById(-1);
-        assertEquals(userPO, null);
+        User user = userMapper.selectById(-1);
+        assertEquals(user, null);
     }
 
     @Test
     public void testInsert() {
-        UserPO userPO = new UserPO();
-        userPO.setUsername("good");
-        userPO.setPassword("bad");
-        userPO.setEmail("101010@qq.com");
+        User user = new User();
+        user.setUsername("good");
+        user.setPassword("bad");
+        user.setEmail("101010@qq.com");
 
-        UserPO userPO1 = new UserPO();
-        userPO1.setUsername("good1");
-        userPO1.setPassword("bad1");
-        userPO1.setEmail("1010100@qq.com");
+        User user1 = new User();
+        user1.setUsername("good1");
+        user1.setPassword("bad1");
+        user1.setEmail("1010100@qq.com");
 
-        int count = userMapper.insert(userPO);
+        int count = userMapper.insert(user);
         assertEquals(count, 1);
-        count = userMapper.insert(userPO1);
+        count = userMapper.insert(user1);
         assertEquals(count, 1);
     }
 }

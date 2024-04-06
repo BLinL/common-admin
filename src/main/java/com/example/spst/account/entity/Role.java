@@ -1,4 +1,4 @@
-package com.example.spst.account.po;
+package com.example.spst.account.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
@@ -6,13 +6,12 @@ import lombok.Data;
 import java.util.Date;
 
 @Data
-@TableName("sys_permission")
-public class PermissionPO {
-    @TableId(type = IdType.AUTO)
-    private Long permissionId;
-    private String url;
-    private String name;
+@TableName("sys_role")
+public class Role {
 
+    @TableId(type = IdType.AUTO)
+    private Long roleId;
+    private String roleName;
     private String createBy;
     @TableField(fill = FieldFill.INSERT)
     private Date insertTime;

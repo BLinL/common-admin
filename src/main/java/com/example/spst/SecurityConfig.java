@@ -1,45 +1,52 @@
 package com.example.spst;
 
+import com.example.spst.secutiry.LoginFailureHandler;
+import com.example.spst.secutiry.filter.JWTAuthFilter;
+import com.example.spst.secutiry.filter.LoginFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
-import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
-
-import java.util.Map;
+import org.springframework.util.AntPathMatcher;
 
 
 @Configuration
 public class SecurityConfig {
-    @Autowired
-    @Qualifier("delegatedAuthenticationEntryPoint")
-    AuthenticationEntryPoint authenticationEntryPoint;
 
     @Autowired
     @Qualifier("myUserDetailService")
     MyUserDetailService myUserDetailService;
 
+    @Autowired
+    private AccessDeniedHandler accessDeniedHandler;
+
+    @Autowired
+    private LoginFailureHandler loginFailureHandler;
+
     /**
      * 定义比较密码的加密方式
+     *
      * @return
      */
     @Bean
@@ -49,12 +56,13 @@ public class SecurityConfig {
 
     /**
      * AuthenticationManager使用UserDetailsService来加载用户信息进而进行认证AuthenticationManager#authenticate
+     *
      * @return
      */
     @Bean
     public UserDetailsService userDetailsService() {
         InMemoryUserDetailsManager userDetailsManager = new InMemoryUserDetailsManager();
-        userDetailsManager.createUser(User.withUsername("张三").password("{bcrypt}$2a$10$UZN8DBdO45QXljuLTTCGVucvsUxpD7TOYCHcM3z7CCnm1F4nXJAJC").roles("user").build());
+        userDetailsManager.createUser(User.withUsername("张三1").password("{bcrypt}$2a$10$UZN8DBdO45QXljuLTTCGVucvsUxpD7TOYCHcM3z7CCnm1F4nXJAJC").roles("user").build());
         return userDetailsManager;
     }
 
@@ -80,12 +88,13 @@ public class SecurityConfig {
         // 多数据源
         DaoAuthenticationProvider daoAuthenticationProvider1 = new DaoAuthenticationProvider();
         daoAuthenticationProvider1.setUserDetailsService(myUserDetailService);
-        ProviderManager pm = new ProviderManager(daoAuthenticationProvider, daoAuthenticationProvider1);
+        ProviderManager pm = new ProviderManager(daoAuthenticationProvider1);
         return pm;
     }
 
     /**
      * 自定义json认证
+     *
      * @return
      */
     public LoginFilter loginFilter(AuthenticationManager authenticationManager) {
@@ -95,15 +104,7 @@ public class SecurityConfig {
             response.setContentType("application/json;charset=utf-8");
             response.getWriter().write(new ObjectMapper().writeValueAsString(authentication));
         }));
-
-        loginFilter.setAuthenticationFailureHandler((request, response, exception) -> {
-            response.setContentType("application/json;charset=utf-8");
-
-            Map<String, Object> authFailMessage = Map.of("code", 1,
-                    "message", exception.getLocalizedMessage());
-            response.getWriter().write(new ObjectMapper().writeValueAsString(authFailMessage));
-        });
-
+        loginFilter.setAuthenticationFailureHandler(loginFailureHandler);
         return loginFilter;
     }
 
@@ -111,6 +112,7 @@ public class SecurityConfig {
      * WebSecurity 是更高层的构建，负责把多个DefaultFilterChain构建为新的FilterChain
      * spring security 的 filter chain 并不是 原生的 filter chain
      * spring 提供DelegatingFilterProxy 将 FilterChainProxy对象(本质也是一个过滤器)嵌入到原生的过滤器链中
+     *
      * @param http
      * @return
      * @throws Exception
@@ -125,35 +127,45 @@ public class SecurityConfig {
 
         // 局部 为啥不起作用
 //        InMemoryUserDetailsManager userDetailsManager = new InMemoryUserDetailsManager();
-//        userDetailsManager.createUser(User.withUsername("张三1").password("{bcrypt}$2a$10$UZN8DBdO45QXljuLTTCGVucvsUxpD7TOYCHcM3z7CCnm1F4nXJAJC").roles("user").build());
-        http.csrf(AbstractHttpConfigurer::disable)
-//                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth ->
-                        // 如何配置
-                        auth
-                                .anyRequest()
-                                .authenticated()
-                )
-//                .formLogin(form -> form.loginPage("/login").permitAll());
-//                .httpBasic(Customizer.withDefaults())
-//                .userDetailsService(userDetailsManager)
+//        userDetailsManager.createUser(User.withUsername("张三2").password("{bcrypt}$2a$10$UZN8DBdO45QXljuLTTCGVucvsUxpD7TOYCHcM3z7CCnm1F4nXJAJC").roles("user").build());
+        http
                 .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(customer -> {
+                    customer
+                            .requestMatchers("/login")
+                            .permitAll()
+                            .requestMatchers("/api/user/**").hasRole("user")
+                            .anyRequest().authenticated();
+//                            .access((authenticationSupplier, requestAuthorizationContext) -> {
+//                                Authentication authentication = authenticationSupplier.get();
+////                                if (!authentication.isAuthenticated()) {
+////                                    return new AuthorizationDecision(false);
+////                                }
+//                                String requestURI = requestAuthorizationContext.getRequest().getRequestURI();
+//                                System.out.println("check perm: "  + requestURI);
+//                                AntPathMatcher antPathMatcher = new AntPathMatcher();
+//                                if (antPathMatcher.match("/p2", requestURI)) {
+//                                    System.out.println("/p2");
+//                                    return new AuthorizationDecision(false);
+//                                }
+//                                return new AuthorizationDecision(true);
+//                            });
+                })
+                .addFilterBefore(new JWTAuthFilter(), LoginFilter.class)
                 .addFilterAt(loginFilter(authenticationManager()), UsernamePasswordAuthenticationFilter.class)
-                .logout(httpSecurityLogoutConfigurer -> {
-                    httpSecurityLogoutConfigurer.logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler());
-                });
-//                .exceptionHandling(exceptionHandlingConfigurer ->
-//                        exceptionHandlingConfigurer.authenticationEntryPoint(authenticationEntryPoint));
+                .logout(httpSecurityLogoutConfigurer -> httpSecurityLogoutConfigurer.logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler()))
+                .exceptionHandling(exceptionHandlingConfigurer -> exceptionHandlingConfigurer.accessDeniedHandler(accessDeniedHandler));
 
         return http.build();
     }
-//
+
+    //
     @Bean
     WebSecurityCustomizer webSecurityCustomizer() {
         // 忽略 /error 页面
         return web -> web.ignoring()
                 .requestMatchers("/error")
-                .requestMatchers("/api/account/create")
                 // 忽略常见的静态资源路径
                 .requestMatchers(PathRequest.toStaticResources().atCommonLocations());
     }

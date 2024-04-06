@@ -1,4 +1,4 @@
-package com.example.spst.web;
+package com.example.spst.account.web;
 
 
 import com.example.spst.account.dto.UserDTO;
