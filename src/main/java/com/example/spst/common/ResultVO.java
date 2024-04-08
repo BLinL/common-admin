@@ -17,15 +17,16 @@ public class ResultVO<T> {
        return new ResultVO<>();
     }
 
-    public static <T> ResultVO<T> success(T data) {
+    public static <T> ResultVO<T> success(String msg, T data) {
         ResultVO<T> tResultVO = new ResultVO<>();
         tResultVO.setData(data);
+        tResultVO.setMessage(msg);
         return tResultVO;
     }
 
-    public static <T> ResultVO<T> success(String msg) {
+    public static <T> ResultVO<T> success(T data) {
         ResultVO<T> tResultVO = new ResultVO<>();
-        tResultVO.setMessage(msg);
+        tResultVO.setData(data);
         return tResultVO;
     }
 

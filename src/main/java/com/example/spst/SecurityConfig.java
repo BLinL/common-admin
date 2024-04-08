@@ -1,14 +1,17 @@
 package com.example.spst;
 
 import com.example.spst.secutiry.LoginFailureHandler;
+import com.example.spst.secutiry.LoginSuccessHandler;
 import com.example.spst.secutiry.filter.JWTAuthFilter;
 import com.example.spst.secutiry.filter.LoginFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -40,10 +43,10 @@ public class SecurityConfig {
 
     @Autowired
     private AccessDeniedHandler accessDeniedHandler;
-
-    @Autowired
-    private LoginFailureHandler loginFailureHandler;
-
+    @Bean
+    public LoginFilter loginFilter(ObjectMapper objectMapper, LoginSuccessHandler loginSuccessHandler, LoginFailureHandler loginFailureHandler) {
+        return new LoginFilter(authenticationManager(), objectMapper, loginFailureHandler, loginSuccessHandler);
+    };
     /**
      * 定义比较密码的加密方式
      *
@@ -60,10 +63,21 @@ public class SecurityConfig {
      * @return
      */
     @Bean
-    public UserDetailsService userDetailsService() {
-        InMemoryUserDetailsManager userDetailsManager = new InMemoryUserDetailsManager();
-        userDetailsManager.createUser(User.withUsername("张三1").password("{bcrypt}$2a$10$UZN8DBdO45QXljuLTTCGVucvsUxpD7TOYCHcM3z7CCnm1F4nXJAJC").roles("user").build());
-        return userDetailsManager;
+    public AuthenticationManager authenticationManager() {
+        /**
+         * 支持用户名密码认证
+         * AbstractUserDetailsAuthenticationProvider的实现
+         *
+         * DaoAuthenticationProvider#additionalAuthenticationChecks 中使用加密算法匹配用户密码
+         */
+//        DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
+//        daoAuthenticationProvider.setUserDetailsService(userDetailsService());
+
+        // 多数据源
+        DaoAuthenticationProvider daoAuthenticationProvider1 = new DaoAuthenticationProvider();
+        daoAuthenticationProvider1.setUserDetailsService(myUserDetailService);
+        ProviderManager pm = new ProviderManager(daoAuthenticationProvider1);
+        return pm;
     }
 
     /**
@@ -74,39 +88,7 @@ public class SecurityConfig {
      *
      * @return
      */
-    @Bean
-    public AuthenticationManager authenticationManager() {
-        /**
-         * 支持用户名密码认证
-         * AbstractUserDetailsAuthenticationProvider的实现
-         *
-         * DaoAuthenticationProvider#additionalAuthenticationChecks 中使用加密算法匹配用户密码
-         */
-        DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
-        daoAuthenticationProvider.setUserDetailsService(userDetailsService());
 
-        // 多数据源
-        DaoAuthenticationProvider daoAuthenticationProvider1 = new DaoAuthenticationProvider();
-        daoAuthenticationProvider1.setUserDetailsService(myUserDetailService);
-        ProviderManager pm = new ProviderManager(daoAuthenticationProvider1);
-        return pm;
-    }
-
-    /**
-     * 自定义json认证
-     *
-     * @return
-     */
-    public LoginFilter loginFilter(AuthenticationManager authenticationManager) {
-        LoginFilter loginFilter = new LoginFilter();
-        loginFilter.setAuthenticationManager(authenticationManager);
-        loginFilter.setAuthenticationSuccessHandler(((request, response, authentication) -> {
-            response.setContentType("application/json;charset=utf-8");
-            response.getWriter().write(new ObjectMapper().writeValueAsString(authentication));
-        }));
-        loginFilter.setAuthenticationFailureHandler(loginFailureHandler);
-        return loginFilter;
-    }
 
     /**
      * WebSecurity 是更高层的构建，负责把多个DefaultFilterChain构建为新的FilterChain
@@ -118,7 +100,7 @@ public class SecurityConfig {
      * @throws Exception
      */
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, LoginFilter loginFilter) throws Exception {
         /**
          * HttpSecurity是 SecurityBuilder的实现 用于构建DefaultSecurityFilterChain对象
          * springSecurity 中所有需要构建的对象都可以通过 SecurityBuilder
@@ -153,7 +135,7 @@ public class SecurityConfig {
 //                            });
                 })
                 .addFilterBefore(new JWTAuthFilter(), LoginFilter.class)
-                .addFilterAt(loginFilter(authenticationManager()), UsernamePasswordAuthenticationFilter.class)
+                .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class)
                 .logout(httpSecurityLogoutConfigurer -> httpSecurityLogoutConfigurer.logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler()))
                 .exceptionHandling(exceptionHandlingConfigurer -> exceptionHandlingConfigurer.accessDeniedHandler(accessDeniedHandler));
 
