@@ -24,7 +24,7 @@ public class CustomerAccessDenyHandler implements AccessDeniedHandler {
 
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException) throws IOException, ServletException {
-        ResultVO<Object> authenticationFailed = ResultVO.fail("Authentication failed", "401");
+        ResultVO<Object> authenticationFailed = ResultVO.fail("Authentication failed", "403");
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.getWriter().write(customObjectMapper.writeValueAsString(authenticationFailed));
     }

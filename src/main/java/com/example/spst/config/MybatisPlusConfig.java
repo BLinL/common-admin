@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import org.apache.ibatis.reflection.MetaObject;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 
 /**
@@ -14,12 +15,12 @@ import java.util.Date;
 public class MybatisPlusConfig implements MetaObjectHandler {
     @Override
     public void insertFill(MetaObject metaObject) {
-        setFieldValByName("insertTime", new Date(), metaObject);
-        setFieldValByName("updateTime", new Date(), metaObject);
+        setFieldValByName("insertTime", LocalDateTime.now(), metaObject);
+        setFieldValByName("updateTime", LocalDateTime.now(), metaObject);
     }
 
     @Override
     public void updateFill(MetaObject metaObject) {
-        setFieldValByName("updateTime", new Date(), metaObject);
+        setFieldValByName("updateTime", LocalDateTime.now(), metaObject);
     }
 }

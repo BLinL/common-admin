@@ -1,9 +1,11 @@
 package com.example.spst;
 
+import com.example.spst.account.service.UserService;
 import com.example.spst.secutiry.LoginFailureHandler;
 import com.example.spst.secutiry.LoginSuccessHandler;
 import com.example.spst.secutiry.filter.JWTAuthFilter;
 import com.example.spst.secutiry.filter.LoginFilter;
+import com.example.spst.secutiry.filter.PermissionFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -23,7 +25,9 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
@@ -42,11 +46,19 @@ public class SecurityConfig {
     MyUserDetailService myUserDetailService;
 
     @Autowired
+    UserService userService;
+
+    @Autowired
     private AccessDeniedHandler accessDeniedHandler;
     @Bean
     public LoginFilter loginFilter(ObjectMapper objectMapper, LoginSuccessHandler loginSuccessHandler, LoginFailureHandler loginFailureHandler) {
         return new LoginFilter(authenticationManager(), objectMapper, loginFailureHandler, loginSuccessHandler);
-    };
+    }
+
+    @Bean
+    public PermissionFilter permissionFilter() {
+        return new PermissionFilter();
+    }
     /**
      * 定义比较密码的加密方式
      *
@@ -70,8 +82,8 @@ public class SecurityConfig {
          *
          * DaoAuthenticationProvider#additionalAuthenticationChecks 中使用加密算法匹配用户密码
          */
-//        DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
-//        daoAuthenticationProvider.setUserDetailsService(userDetailsService());
+        DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
+        daoAuthenticationProvider.setUserDetailsService(new InMemoryUserDetailsManager(User.withUsername("张三").password("{bcrypt}$2a$10$UZN8DBdO45QXljuLTTCGVucvsUxpD7TOYCHcM3z7CCnm1F4nXJAJC").roles("user").build()));
 
         // 多数据源
         DaoAuthenticationProvider daoAuthenticationProvider1 = new DaoAuthenticationProvider();
@@ -111,13 +123,14 @@ public class SecurityConfig {
 //        InMemoryUserDetailsManager userDetailsManager = new InMemoryUserDetailsManager();
 //        userDetailsManager.createUser(User.withUsername("张三2").password("{bcrypt}$2a$10$UZN8DBdO45QXljuLTTCGVucvsUxpD7TOYCHcM3z7CCnm1F4nXJAJC").roles("user").build());
         http
+                .cors(AbstractHttpConfigurer::disable)
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .securityMatcher("/**")
                 .authorizeHttpRequests(customer -> {
                     customer
-                            .requestMatchers("/login")
-                            .permitAll()
-                            .requestMatchers("/api/user/**").hasRole("user")
+                            .requestMatchers("/login").permitAll()
+                            .requestMatchers("/logout").permitAll()
                             .anyRequest().authenticated();
 //                            .access((authenticationSupplier, requestAuthorizationContext) -> {
 //                                Authentication authentication = authenticationSupplier.get();
@@ -134,8 +147,9 @@ public class SecurityConfig {
 //                                return new AuthorizationDecision(true);
 //                            });
                 })
-                .addFilterBefore(new JWTAuthFilter(), LoginFilter.class)
+                .addFilterBefore(new JWTAuthFilter(userService), LoginFilter.class)
                 .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class)
+                //.addFilterAfter(permissionFilter(), JWTAuthFilter.class)
                 .logout(httpSecurityLogoutConfigurer -> httpSecurityLogoutConfigurer.logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler()))
                 .exceptionHandling(exceptionHandlingConfigurer -> exceptionHandlingConfigurer.accessDeniedHandler(accessDeniedHandler));
 

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
 import java.util.Date;
+import java.util.List;
 
 @Data
 @TableName("sys_role")
@@ -17,4 +18,6 @@ public class Role {
     private Date insertTime;
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private Date updateTime;
+    @TableField(exist = false)
+    private List<Permission> permissionList;
 }

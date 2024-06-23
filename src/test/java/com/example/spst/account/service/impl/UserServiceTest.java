@@ -23,8 +23,6 @@ class UserServiceTest {
         userDTO.setEmail("");
         userDTO.setUsername("zs");
         userDTO.setPassword("123");
-
-        Method[] declaredMethods = userService.getClass().getDeclaredMethods();
         ResultVO<UserDTO> user = userService.createNewUser(userDTO);
         assertEquals(user.getCode(), 0);
     }

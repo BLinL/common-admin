@@ -1,5 +1,7 @@
 package com.example.spst.secutiry.filter;
 
+import com.example.spst.secutiry.UserPrinciple;
+import com.example.spst.secutiry.UserPrincipleAuthenticationToken;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -57,7 +59,7 @@ public class JwtService {
                 .parser()
                 .setSigningKey(getSignKey())
                 .build()
-                .parseClaimsJws(token)
+                .parseSignedClaims(token)
                 .getBody();
     }
 
@@ -65,13 +67,18 @@ public class JwtService {
         return extractExpiration(token).before(new Date());
     }
 
-    public static Boolean validateToken(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
-    }
+//    public static Boolean validateToken(String token, UserDetails userDetails) {
+//        final String username = extractUsername(token);
+//        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+//    }
 
     public static Authentication getAuthentication(String token) {
         Object username = extractClaim(token, t -> t.get("username"));
-        return new UsernamePasswordAuthenticationToken(username, null, List.of(new SimpleGrantedAuthority("ROLE_user")));
+        Object roles = extractClaim(token, t -> t.get("roles"));
+        UserPrinciple userPrinciple = UserPrinciple.builder()
+                .email((String) username)
+                .authorities(roles == null ? List.of(): (List)roles)
+                .build();
+        return new UserPrincipleAuthenticationToken(userPrinciple);
     }
 }

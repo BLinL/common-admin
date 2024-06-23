@@ -15,4 +15,6 @@ public interface UserService extends IService<User> {
     ResultVO<List<UserDTO>> listUser();
 
     ResultVO<Void> updateUser(UserDTO userDTO) throws IllegalAccessException;
+
+    User queryUserByUsername(String username);
 }
