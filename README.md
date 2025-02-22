@@ -1,2 +1,2 @@
 # common-admin
-somethingn like springboot template
+springboot template
